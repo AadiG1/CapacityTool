@@ -1,0 +1,32 @@
+import pandas as pd
+import numpy as np
+
+# Load the Excel file starting from row 7
+file_path = r'c:\Users\guptaa\Desktop\Capacity Sheet Connection.xlsx'
+data = pd.read_excel(file_path, sheet_name='Capacity tool', skiprows=6)
+
+print("Missing values per column:\n", data.isnull().sum())
+
+# Calculate scores based on Net Sales, Conversion %, and Traffic LY Diff %
+data['Score'] = data['Net Sales'] * 0.5 + data['Conversion %'] * 0.4 + data['Traffic LY Diff %'] * 0.1
+
+top_1000_stores = data.nlargest(1000, 'Score') # All A, B, C tier Stores
+
+# Assign SKUs based on their rank
+def assign_skus(score):
+    if score >= top_1000_stores['Score'].quantile(0.95):
+        return np.random.randint(18, 21)  # 18-20 SKUs for the top 5%
+    elif score >= top_1000_stores['Score'].quantile(0.70):
+        return np.random.randint(14, 17)  # 14-16 SKUs for the next 25%
+    else:
+        return np.random.randint(8, 13)   # 8-12 SKUs for the remaining 70%
+
+top_1000_stores['Assigned SKUs'] = top_1000_stores['Score'].apply(assign_skus)
+
+print(top_1000_stores[['Row Labels', 'Net Sales', 'Conversion %', 'Traffic LY Diff %', 'Score', 'Assigned SKUs']])
+
+# New path for the new Excel file
+new_file_path = r'c:\Users\guptaa\Desktop\Capacity Sheet Connection2.xlsx'
+with pd.ExcelWriter(new_file_path, engine='openpyxl') as writer:
+    top_1000_stores.to_excel(writer, sheet_name='Top 584 Stores', index=False)
+print(f"Updated capacity sheet saved to {new_file_path}")
